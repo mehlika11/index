@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WordLens — DDL Vocabulary Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --blue-50:  #EFF6FF;
+  --blue-100: #DBEAFE;
+  --blue-200: #BFDBFE;
+  --blue-300: #93C5FD;
+  --blue-400: #60A5FA;
+  --blue-500: #3B82F6;
+  --blue-600: #2563EB;
+  --blue-700: #1D4ED8;
+  --sky-50:   #F0F9FF;
+  --sky-100:  #E0F2FE;
+  --slate-50: #F8FAFC;
+  --slate-100:#F1F5F9;
+  --slate-200:#E2E8F0;
+  --slate-300:#CBD5E1;
+  --slate-400:#94A3B8;
+  --slate-500:#64748B;
+  --slate-600:#475569;
+  --slate-700:#334155;
+  --slate-800:#1E293B;
+  --slate-900:#0F172A;
+  --green:    #16A34A;
+  --amber:    #D97706;
+  --orange:   #EA580C;
+  --white:    #FFFFFF;
+  --radius:   14px;
+  --radius-sm:8px;
+  --shadow:   0 1px 3px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.05);
+  --shadow-md:0 4px 24px rgba(59,130,246,.12), 0 1px 4px rgba(0,0,0,.06);
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--slate-50);
+  color: var(--slate-800);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ── */
+.app-header {
+  background: var(--white);
+  border-bottom: 1px solid var(--slate-200);
+  padding: 0 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header-inner {
+  max-width: 680px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 60px;
+}
+.logo {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px;
+  color: var(--blue-600);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.logo em { font-style: italic; color: var(--blue-400); }
+
+/* ── Search ── */
+.search-wrap {
+  flex: 1;
+  position: relative;
+}
+.search-input {
+  width: 100%;
+  height: 40px;
+  border: 1.5px solid var(--slate-200);
+  border-radius: 999px;
+  padding: 0 40px 0 16px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  color: var(--slate-800);
+  background: var(--slate-50);
+  outline: none;
+  transition: border-color .18s, box-shadow .18s, background .18s;
+}
+.search-input:focus {
+  border-color: var(--blue-400);
+  background: var(--white);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.1);
+}
+.search-btn {
+  position: absolute;
+  right: 6px; top: 50%;
+  transform: translateY(-50%);
+  width: 30px; height: 30px;
+  background: var(--blue-500);
+  border: none; border-radius: 50%;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.search-btn:hover { background: var(--blue-600); }
+.search-btn svg { width: 14px; height: 14px; stroke: white; fill: none; }
+
+/* ── Main ── */
+.main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 20px 16px 60px;
+}
+
+/* ── Quick words ── */
+.quick-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--slate-400);
+  margin-bottom: 10px;
+}
+.quick-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+.chip {
+  padding: 6px 14px;
+  background: var(--white);
+  border: 1.5px solid var(--slate-200);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--slate-600);
+  cursor: pointer;
+  transition: all .15s;
+}
+.chip:hover { border-color: var(--blue-300); background: var(--blue-50); color: var(--blue-600); }
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+.empty-icon { font-size: 52px; margin-bottom: 16px; }
+.empty-title { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--slate-700); margin-bottom: 8px; }
+.empty-sub { font-size: 15px; color: var(--slate-400); line-height: 1.6; }
+
+/* ── Loading ── */
+.loading-state {
+  display: none;
+  text-align: center;
+  padding: 60px 20px;
+}
+.loading-state.active { display: block; }
+.loading-word {
+  font-family: 'DM Serif Display', serif;
+  font-size: 32px;
+  color: var(--blue-500);
+  margin-bottom: 16px;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.loading-sub { font-size: 14px; color: var(--slate-400); }
+.loading-dots span {
+  display: inline-block;
+  width: 7px; height: 7px;
+  background: var(--blue-300);
+  border-radius: 50%;
+  margin: 0 3px;
+  animation: bounce 1.2s ease-in-out infinite;
+}
+.loading-dots span:nth-child(2) { animation-delay: .2s; }
+.loading-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+
+/* ── Word result panel ── */
+.result-panel { display: none; }
+.result-panel.active { display: block; }
+
+/* ── Word header ── */
+.word-header {
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+.word-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 36px;
+  color: var(--slate-900);
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+.word-type {
+  display: inline-block;
+  background: var(--blue-50);
+  color: var(--blue-600);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-right: 8px;
+}
+.word-simple-def {
+  font-size: 15px;
+  color: var(--slate-500);
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+/* ── Sense picker (for polysemous words) ── */
+.sense-picker {
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+  display: none;
+}
+.sense-picker.active { display: block; }
+.sense-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--slate-500);
+  margin-bottom: 12px;
+}
+.sense-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.sense-card {
+  flex: 1;
+  min-width: 100px;
+  background: var(--slate-50);
+  border: 2px solid var(--slate-200);
+  border-radius: var(--radius-sm);
+  padding: 14px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .18s;
+}
+.sense-card:hover { border-color: var(--blue-300); background: var(--blue-50); }
+.sense-card.selected { border-color: var(--blue-500); background: var(--blue-50); }
+.sense-icon { font-size: 28px; margin-bottom: 6px; }
+.sense-name { font-size: 13px; font-weight: 600; color: var(--slate-700); }
+
+/* ── Tabs ── */
+.tabs {
+  display: flex;
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius);
+  padding: 5px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+  gap: 4px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 9px 6px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--slate-500);
+  cursor: pointer;
+  transition: all .16s;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--slate-700); background: var(--slate-50); }
+.tab-btn.active { background: var(--blue-500); color: white; }
+
+/* ── Tab panels ── */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── Examples tab ── */
+.examples-list { display: flex; flex-direction: column; gap: 10px; }
+.example-card {
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  transition: box-shadow .16s;
+}
+.example-card:hover { box-shadow: var(--shadow-md); }
+.cefr-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  margin-top: 1px;
+}
+.cefr-a1 { background: #DCFCE7; color: var(--green); }
+.cefr-a2 { background: #FEF9C3; color: #92400E; }
+.cefr-b1 { background: #FFEDD5; color: var(--orange); }
+.example-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--slate-700);
+}
+.example-text strong {
+  color: var(--blue-600);
+  font-weight: 700;
+  background: var(--blue-50);
+  padding: 1px 3px;
+  border-radius: 4px;
+}
+
+/* ── Patterns tab ── */
+.patterns-list { display: flex; flex-direction: column; gap: 10px; }
+.pattern-card {
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+}
+.pattern-frame {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--blue-600);
+  margin-bottom: 10px;
+  font-family: 'DM Serif Display', serif;
+  font-style: italic;
+  font-size: 17px;
+}
+.colloc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.colloc-chip {
+  background: var(--sky-50);
+  border: 1.5px solid var(--blue-100);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--slate-700);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.colloc-chip .emoji { font-size: 15px; }
+
+/* ── Similar words tab ── */
+.wordcloud-intro {
+  font-size: 13px;
+  color: var(--slate-400);
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+.wordcloud {
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius);
+  padding: 22px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  line-height: 2;
+}
+.cloud-word {
+  cursor: pointer;
+  color: var(--blue-600);
+  font-weight: 600;
+  transition: color .15s, transform .15s;
+  display: inline-block;
+}
+.cloud-word:hover { color: var(--blue-800); transform: scale(1.08); }
+.cloud-word.size-1 { font-size: 13px; color: var(--blue-300); font-weight: 500; }
+.cloud-word.size-2 { font-size: 15px; color: var(--blue-400); }
+.cloud-word.size-3 { font-size: 18px; color: var(--blue-500); }
+.cloud-word.size-4 { font-size: 22px; color: var(--blue-600); }
+.cloud-word.size-5 { font-size: 27px; color: var(--blue-700); font-weight: 700; }
+.cloud-note {
+  font-size: 12px;
+  color: var(--slate-400);
+  text-align: center;
+  margin-top: 12px;
+  font-style: italic;
+}
+
+/* ── Word image ── */
+.word-image-wrap {
+  margin-top: 14px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+  background: var(--slate-100);
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.word-image-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: var(--radius-sm);
+  transition: opacity .3s;
+}
+.word-image-wrap .img-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--slate-100) 25%, var(--slate-200) 50%, var(--slate-100) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.word-image-wrap .img-credit {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: rgba(0,0,0,.32);
+  color: rgba(255,255,255,.75);
+  font-size: 10px;
+  padding: 4px 8px;
+  text-align: right;
+  letter-spacing: .2px;
+}
+.word-image-wrap svg {
+  width: 100%; height: 100%;
+}
+
+/* ── Error state ── */
+.error-card {
+  background: #FFF5F5;
+  border: 1px solid #FED7D7;
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  color: #C53030;
+  font-size: 14px;
+  display: none;
+}
+.error-card.active { display: block; }
+
+/* ── Mobile ── */
+@media (max-width: 480px) {
+  .logo { font-size: 17px; }
+  .word-title { font-size: 28px; }
+  .tab-btn { font-size: 12px; padding: 8px 4px; }
+  .sense-cards { gap: 7px; }
+  .sense-card { min-width: 80px; padding: 12px 8px; }
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-inner">
+    <div class="logo">Word<em>Lens</em></div>
+    <div class="search-wrap">
+      <input class="search-input" id="searchInput" type="text"
+             placeholder="Type a word…" autocomplete="off" autocorrect="off"
+             spellcheck="false">
+      <button class="search-btn" id="searchBtn" aria-label="Search">
+        <svg viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- Quick start chips -->
+  <div id="quickStart">
+    <div class="quick-label">Try these words</div>
+    <div class="quick-chips">
+      <button class="chip" onclick="doSearch('make')">make</button>
+      <button class="chip" onclick="doSearch('get')">get</button>
+      <button class="chip" onclick="doSearch('take')">take</button>
+      <button class="chip" onclick="doSearch('fair')">fair</button>
+    </div>
+
+    <div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">Look up any word</div>
+      <div class="empty-sub">Type a word above or tap one of the suggestions.<br>You'll see real example sentences, word patterns, and similar words.</div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" id="loadingState">
+    <div class="loading-word" id="loadingWord">make</div>
+    <div class="loading-dots"><span></span><span></span><span></span></div>
+    <div class="loading-sub" style="margin-top:12px">Looking up examples and patterns…</div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-card" id="errorCard">
+    ⚠️ Something went wrong. Please try again.
+  </div>
+
+  <!-- Results -->
+  <div class="result-panel" id="resultPanel">
+
+    <!-- Word header -->
+    <div class="word-header" id="wordHeader"></div>
+
+    <!-- Sense picker (polysemous words) -->
+    <div class="sense-picker" id="sensePicker">
+      <div class="sense-label">This word has more than one meaning. Which one do you want to explore?</div>
+      <div class="sense-cards" id="senseCards"></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showTab('examples', this)">📖 Examples</button>
+      <button class="tab-btn" onclick="showTab('patterns', this)">🔗 Word patterns</button>
+      <button class="tab-btn" onclick="showTab('similar', this)">🌀 Similar words</button>
+    </div>
+
+    <!-- Examples panel -->
+    <div class="tab-panel active" id="tab-examples">
+      <div class="examples-list" id="examplesList"></div>
+    </div>
+
+    <!-- Patterns panel -->
+    <div class="tab-panel" id="tab-patterns">
+      <div class="patterns-list" id="patternsList"></div>
+    </div>
+
+    <!-- Similar words panel -->
+    <div class="tab-panel" id="tab-similar">
+      <div class="wordcloud-intro">Tap any word to look it up</div>
+      <div class="wordcloud" id="wordcloud"></div>
+      <div class="cloud-note">Bigger = closer in meaning</div>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+let currentWord = '';
+let currentSense = null;
+let currentData = null;
+
+// ── Search wiring ──────────────────────────────────────────────────────
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') triggerSearch();
+});
+document.getElementById('searchBtn').addEventListener('click', triggerSearch);
+
+function triggerSearch() {
+  const val = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (val) doSearch(val);
+}
+
+function doSearch(word) {
+  document.getElementById('searchInput').value = word;
+  currentWord = word;
+  currentSense = null;
+  fetchWordData(word, null);
+}
+
+// ── UI state helpers ───────────────────────────────────────────────────
+function showLoading(word) {
+  document.getElementById('quickStart').style.display = 'none';
+  document.getElementById('loadingWord').textContent = word;
+  document.getElementById('loadingState').classList.add('active');
+  document.getElementById('resultPanel').classList.remove('active');
+  document.getElementById('errorCard').classList.remove('active');
+}
+
+function showError() {
+  document.getElementById('loadingState').classList.remove('active');
+  document.getElementById('errorCard').classList.add('active');
+}
+
+function showResult() {
+  document.getElementById('loadingState').classList.remove('active');
+  document.getElementById('resultPanel').classList.add('active');
+  // reset to first tab
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i===0));
+  document.querySelectorAll('.tab-panel').forEach((p,i) => p.classList.toggle('active', i===0));
+}
+
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── API call ───────────────────────────────────────────────────────────
+async function fetchWordData(word, sense) {
+  showLoading(word);
+
+  const senseNote = sense ? `Focus only on the meaning: "${sense.name}" (${sense.emoji}).` : '';
+
+  const prompt = `You are a vocabulary data generator for an English learning app aimed at A2 (elementary) learners.
+
+The user is looking up the word: "${word}"
+${senseNote}
+
+Return a single JSON object (no markdown, no extra text) with this exact structure:
+
+{
+  "word": "${word}",
+  "partOfSpeech": "verb/noun/adjective (pick main one)",
+  "simpleDefinition": "One plain-English sentence, max 15 words, no jargon.",
+  "hasVisualImage": true,
+  "imageSearchTerm": "red apple fruit",
+  "svgFallback": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>...</svg>",
+  "isPolysemous": false,
+  "senses": [],
+  "examples": [
+    { "sentence": "She makes a cake every Sunday.", "cefrLevel": "A1" },
+    { "sentence": "...", "cefrLevel": "A2" },
+    { "sentence": "...", "cefrLevel": "A2" },
+    { "sentence": "...", "cefrLevel": "A2" },
+    { "sentence": "...", "cefrLevel": "B1" },
+    { "sentence": "...", "cefrLevel": "B1" }
+  ],
+  "patterns": [
+    {
+      "frame": "You can ${word}: …",
+      "collocations": [
+        { "text": "a decision", "emoji": "💭" },
+        { "text": "a mistake",  "emoji": "❌" },
+        { "text": "a cake",     "emoji": "🎂" }
+      ]
+    }
+  ],
+  "similarWords": [
+    { "word": "create", "closeness": 5 },
+    { "word": "build",  "closeness": 4 },
+    { "word": "produce","closeness": 3 },
+    { "word": "form",   "closeness": 2 },
+    { "word": "cause",  "closeness": 1 }
+  ]
+}
+
+Rules:
+- "hasVisualImage": true ONLY for concrete, visually representable words (nouns like apple, dog, chair; adjectives like red, tall; clear actions like run, swim). Set false for abstract verbs/concepts (make, get, take, justice, freedom).
+- "imageSearchTerm": a 2–4 word descriptive phrase for image search. Be specific (e.g. "red apple fruit", "golden retriever dog", "wooden chair furniture"). Only set when hasVisualImage is true, otherwise "".
+- "svgFallback": a complete, self-contained SVG string (viewBox 0 0 200 200). Draw a simple, colourful flat illustration of the word. Use a soft coloured background rect rx=16. No text inside the SVG. Make it recognisable and cheerful. This is the fallback if photos fail. Escape any quotes properly for JSON.
+- "isPolysemous": true only if the word has 2+ clearly DIFFERENT common meanings (like "fair", "bank", "run"). For most words set false and "senses" = [].
+- "examples": exactly 6 sentences. Bold the target word using <strong> tags. Keep sentences short (under 12 words). Match CEFR level truly.
+- "patterns": 2–4 groups, each with 3–6 collocations. Real, frequent collocations only. Concrete emoji for concrete nouns, "" for abstract.
+- "similarWords": 5–7 words. "closeness" 1 (loose) to 5 (very close).
+- JSON only. No prose. No markdown fences.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const raw = await res.json();
+    let text = (raw.content || []).map(b => b.text || '').join('').trim();
+    // strip possible markdown fences
+    text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/,'');
+    const data = JSON.parse(text);
+    currentData = data;
+    renderResult(data, sense);
+  } catch(e) {
+    console.error(e);
+    showError();
+  }
+}
+
+// ── Render ─────────────────────────────────────────────────────────────
+function renderResult(data, activeSense) {
+
+  // ── Word header
+  const imageHTML = data.hasVisualImage
+    ? `<div class="word-image-wrap" id="wordImageWrap">
+         <div class="img-shimmer"></div>
+       </div>`
+    : '';
+
+  document.getElementById('wordHeader').innerHTML = `
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+      <div class="word-title">${data.word}</div>
+      <span class="word-type">${data.partOfSpeech}</span>
+    </div>
+    <div class="word-simple-def">${data.simpleDefinition}</div>
+    ${imageHTML}
+  `;
+
+  if (data.hasVisualImage && data.imageSearchTerm) {
+    loadWordImage(data.imageSearchTerm, data.svgFallback || '', data.word);
+  }
+
+  // ── Sense picker
+  const picker = document.getElementById('sensePicker');
+  const cardsEl = document.getElementById('senseCards');
+  if (data.isPolysemous && data.senses && data.senses.length > 1 && !activeSense) {
+    cardsEl.innerHTML = data.senses.map(s => `
+      <div class="sense-card" onclick="selectSense(${JSON.stringify(s).replace(/"/g,'&quot;')})">
+        <div class="sense-icon">${s.emoji}</div>
+        <div class="sense-name">${s.name}</div>
+      </div>
+    `).join('');
+    picker.classList.add('active');
+  } else if (activeSense) {
+    cardsEl.innerHTML = data.senses ? data.senses.map(s => `
+      <div class="sense-card ${s.id === activeSense.id ? 'selected' : ''}"
+           onclick="selectSense(${JSON.stringify(s).replace(/"/g,'&quot;')})">
+        <div class="sense-icon">${s.emoji}</div>
+        <div class="sense-name">${s.name}</div>
+      </div>
+    `).join('') : '';
+    if (data.senses && data.senses.length > 1) picker.classList.add('active');
+  } else {
+    picker.classList.remove('active');
+  }
+
+  // ── Examples
+  const cefrLabel = { A1:'🟢 A1', A2:'🟡 A2', B1:'🟠 B1' };
+  const cefrClass = { A1:'cefr-a1', A2:'cefr-a2', B1:'cefr-b1' };
+  document.getElementById('examplesList').innerHTML = (data.examples || []).map(ex => `
+    <div class="example-card">
+      <span class="cefr-badge ${cefrClass[ex.cefrLevel] || 'cefr-a2'}">${cefrLabel[ex.cefrLevel] || ex.cefrLevel}</span>
+      <div class="example-text">${ex.sentence}</div>
+    </div>
+  `).join('');
+
+  // ── Patterns
+  document.getElementById('patternsList').innerHTML = (data.patterns || []).map(p => `
+    <div class="pattern-card">
+      <div class="pattern-frame">${escapeHtml(p.frame)}</div>
+      <div class="colloc-chips">
+        ${(p.collocations || []).map(c => `
+          <div class="colloc-chip">
+            ${c.emoji ? `<span class="emoji">${c.emoji}</span>` : ''}
+            <span>${escapeHtml(c.text)}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  // ── Word cloud
+  const cloud = document.getElementById('wordcloud');
+  cloud.innerHTML = (data.similarWords || []).map(sw => `
+    <span class="cloud-word size-${Math.max(1,Math.min(5,sw.closeness))}"
+          onclick="doSearch('${escapeHtml(sw.word)}')">${escapeHtml(sw.word)}</span>
+  `).join('');
+
+  showResult();
+}
+
+function selectSense(sense) {
+  currentSense = sense;
+  fetchWordData(currentWord, sense);
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Image loading ───────────────────────────────────────────────────────
+// Strategy: 1) Unsplash CDN  2) Wikimedia Commons  3) SVG fallback from API
+
+async function loadWordImage(searchTerm, svgFallback, word) {
+  const wrap = document.getElementById('wordImageWrap');
+  if (!wrap) return;
+
+  // Sources to try in order
+  const sources = [
+    () => tryUnsplash(searchTerm),
+    () => tryWikimedia(searchTerm),
+  ];
+
+  for (const source of sources) {
+    try {
+      const { url, credit } = await source();
+      if (url) {
+        const ok = await loadImgTag(wrap, url, credit);
+        if (ok) return;
+      }
+    } catch(e) { /* try next */ }
+  }
+
+  // Final fallback: SVG from the API response
+  useSvgFallback(wrap, svgFallback, word);
+}
+
+function tryUnsplash(term) {
+  // Unsplash source CDN — no API key needed, returns a redirect to a real photo
+  const encoded = encodeURIComponent(term);
+  const seed = Math.floor(Math.random() * 500);
+  const url = `https://source.unsplash.com/400x280/?${encoded}&sig=${seed}`;
+  return Promise.resolve({ url, credit: 'Photo: Unsplash' });
+}
+
+async function tryWikimedia(term) {
+  // Wikimedia Commons image search API — completely free, no key
+  const q = encodeURIComponent(term);
+  const api = `https://en.wikipedia.org/w/api.php?action=query&titles=${q}&prop=pageimages&format=json&pithumbsize=400&origin=*`;
+  const res = await fetch(api);
+  const data = await res.json();
+  const pages = data?.query?.pages || {};
+  const page = Object.values(pages)[0];
+  const url = page?.thumbnail?.source || null;
+  return { url, credit: 'Photo: Wikimedia' };
+}
+
+function loadImgTag(wrap, url, credit) {
+  return new Promise(resolve => {
+    const img = document.createElement('img');
+    img.alt = '';
+    const timer = setTimeout(() => { img.src = ''; resolve(false); }, 7000);
+    img.onload = () => {
+      clearTimeout(timer);
+      // remove shimmer
+      const shimmer = wrap.querySelector('.img-shimmer');
+      if (shimmer) shimmer.remove();
+      // clear and insert
+      wrap.innerHTML = '';
+      wrap.appendChild(img);
+      if (credit) {
+        const c = document.createElement('div');
+        c.className = 'img-credit';
+        c.textContent = credit;
+        wrap.appendChild(c);
+      }
+      resolve(true);
+    };
+    img.onerror = () => { clearTimeout(timer); resolve(false); };
+    img.src = url;
+  });
+}
+
+function useSvgFallback(wrap, svgString, word) {
+  const shimmer = wrap.querySelector('.img-shimmer');
+  if (shimmer) shimmer.remove();
+  wrap.innerHTML = '';
+
+  if (svgString && svgString.trim().startsWith('<svg')) {
+    wrap.innerHTML = svgString;
+    // make the SVG fill the container
+    const svg = wrap.querySelector('svg');
+    if (svg) { svg.style.width='100%'; svg.style.height='100%'; }
+  } else {
+    // Ultra-minimal emoji fallback
+    wrap.style.fontSize = '80px';
+    wrap.style.background = '#EFF6FF';
+    wrap.textContent = wordToEmoji(word);
+  }
+}
+
+function wordToEmoji(w) {
+  const map = {
+    apple:'🍎',banana:'🍌',bread:'🍞',egg:'🥚',milk:'🥛',pizza:'🍕',
+    cat:'🐱',dog:'🐶',horse:'🐴',butterfly:'🦋',elephant:'🐘',penguin:'🐧',
+    chair:'🪑',bed:'🛏',lamp:'💡',window:'🪟',kitchen:'🍳',
+    mountain:'🏔',river:'🌊',forest:'🌲',desert:'🏜',cloud:'☁️',rainbow:'🌈',
+    bicycle:'🚲',train:'🚂',aeroplane:'✈️',boat:'⛵',bus:'🚌',rocket:'🚀',
+    flower:'🌸',tree:'🌳',book:'📚',phone:'📱',car:'🚗',house:'🏠',
+    sun:'☀️',moon:'🌙',star:'⭐',fish:'🐟',bird:'🐦',cow:'🐄',
+    coffee:'☕',tea:'🍵',water:'💧',fire:'🔥',snow:'❄️',rain:'🌧',
+    red:'🔴',blue:'🔵',green:'🟢',yellow:'🟡',white:'⬜',black:'⬛',
+  };
+  return map[w.toLowerCase()] || '🖼️';
+}
+</script>
+</body>
+</html>
